@@ -68,17 +68,17 @@ class SnakeGame(MiniGameFramework):
 
         # pygame.display.update()
     def get_state(self):
-       #返回蛇的现在位置和食物的位置
-        return (self.snake.head_position(), self.food.position)
+        snake_head = self.snake.body[0]
+        return (snake_head[0], snake_head[1], self.food.position[0], self.food.position[1])
 
     def get_reward(self):
-        #返回奖励
-        if self.snake.check_collision():
-            return -1  # 输了
-        elif self.snake.head_position() == self.food.position:
-            return 1  # 吃掉食物奖励
+        snake_head = self.snake.body[0]
+        if snake_head == self.food.position:
+            return 1  
+        elif self.snake.check_collision():
+            return -1  
         else:
-            return 0  # 没有任何奖励
+            return 0  
     # def draw_start_text(self):
     #     #开始游戏Text,无法显示中文
     #     font = pygame.font.Font(None, 36)

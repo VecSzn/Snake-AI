@@ -2,11 +2,11 @@ import pygame
 import random
 from minigame_framework import MiniGameFramework
 
-#Snake小游戏 贪吃蛇
+# Snake Game
 class SnakeGame(MiniGameFramework):
     def __init__(self, width, height):
         super().__init__(width, height)
-        self.snake = Snake() 
+        self.snake = Snake()
         self.food = Food()
         self.is_game_started = False
 
@@ -28,11 +28,12 @@ class SnakeGame(MiniGameFramework):
                         self.snake.change_direction("LEFT")
                     elif event.key == pygame.K_d:
                         self.snake.change_direction("RIGHT")
+
+    
+
     def update(self):
         if self.is_game_started:
             self.snake.update(self.food)
-            if self.snake.check_collision():
-                self.is_running = False
             self.food.update()
 
     def render(self):
@@ -45,30 +46,36 @@ class SnakeGame(MiniGameFramework):
             self.food.render(self.display)
 
         pygame.display.update()
-    
+
+    def reset_game(self):
+        self.snake = Snake()
+        self.food = Food()
+        self.is_game_started = False
+
+    def is_out_of_bounds(self):
+        head = self.snake.body[0]
+        return head[0] < 0 or head[0] >= self.width or head[1] < 0 or head[1] >= self.height
+
     def draw_start_text(self):
-        #开始游戏Text,无法显示中文
         font = pygame.font.Font(None, 36)
         text = font.render("Click To Start Game", True, (255, 255, 255))
         text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
         self.display.blit(text, text_rect)
-#Snake
+
+
 class Snake:
     def __init__(self):
-        #身体大小/初始方向/颜色
         self.body = [(200, 200)]
         self.direction = (0, -1)
         self.color = (0, 255, 0)
 
     def check_collision(self):
-        #查看是否和身体碰撞
         head = self.body[0]
         if head in self.body[1:]:
             return True
         return False
-    
+
     def change_direction(self, new_direction):
-        #更换方向函数
         if new_direction == "UP" and self.direction != (0, 1):
             self.direction = (0, -1)
         elif new_direction == "DOWN" and self.direction != (0, -1):
@@ -79,14 +86,16 @@ class Snake:
             self.direction = (1, 0)
 
     def update(self, food):
-        #更新位置以及长度
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
 
         if new_head[0] < 0 or new_head[0] >= 800 or new_head[1] < 0 or new_head[1] >= 600:
-            pygame.event.post(pygame.event.Event(pygame.QUIT))
+            #pygame.event.post(pygame.event.Event(pygame.QUIT))
+            game.reset_game()
             return
-
+        if self.check_collision():
+            game.reset_game()
+            return
         self.body.insert(0, new_head)
 
         if new_head == food.position:
@@ -95,27 +104,28 @@ class Snake:
             self.body.pop()
 
     def render(self, display):
-        #渲染蛇
         for segment in self.body:
             pygame.draw.rect(display, self.color, (segment[0], segment[1], 20, 20))
-#Food Class
+
+
 class Food:
     def __init__(self):
-        self.position = (random.randint(0, 39) * 20, random.randint(0, 29) * 20)
+        self.position = (0, 0)
         self.color = (255, 0, 0)
+        self.generate_new_position()
 
     def generate_new_position(self):
-        self.position = (random.randint(0, 39) * 20, random.randint(0, 29) * 20)
+        x = random.randint(0, 39) * 20
+        y = random.randint(0, 29) * 20
+        self.position = (x, y)
 
     def update(self):
-        #这个不用update毕竟不动
         pass
 
     def render(self, display):
-        #渲染Food
         pygame.draw.rect(display, self.color, (self.position[0], self.position[1], 20, 20))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     game = SnakeGame(800, 600)
     game.run()

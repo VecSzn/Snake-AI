@@ -8,50 +8,83 @@ class SnakeGame(MiniGameFramework):
         super().__init__(width, height)
         self.snake = Snake() 
         self.food = Food()
+        self.q_table = QTable() #给慕慕的
         self.is_game_started = False
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.is_running = False
+        # for event in pygame.event.get():
+        #     if event.type == pygame.QUIT:
+        #         self.is_running = False
 
-            if event.type == pygame.MOUSEBUTTONDOWN and not self.is_game_started:
-                self.is_game_started = True
+        #     if event.type == pygame.MOUSEBUTTONDOWN and not self.is_game_started:
+        #         self.is_game_started = True
 
-            if self.is_game_started:
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_w:
-                        self.snake.change_direction("UP")
-                    elif event.key == pygame.K_s:
-                        self.snake.change_direction("DOWN")
-                    elif event.key == pygame.K_a:
-                        self.snake.change_direction("LEFT")
-                    elif event.key == pygame.K_d:
-                        self.snake.change_direction("RIGHT")
+        #     if self.is_game_started:
+        #         if event.type == pygame.KEYDOWN:
+        #             if event.key == pygame.K_w:
+        #                 self.snake.change_direction("UP")
+        #             elif event.key == pygame.K_s:
+        #                 self.snake.change_direction("DOWN")
+        #             elif event.key == pygame.K_a:
+        #                 self.snake.change_direction("LEFT")
+        #             elif event.key == pygame.K_d:
+        #                 self.snake.change_direction("RIGHT")
     def update(self):
-        if self.is_game_started:
-            self.snake.update(self.food)
-            if self.snake.check_collision():
-                self.is_running = False
-            self.food.update()
+        state = self.get_state()
+        action = self.q_table.choose_action(state)
+        self.snake.update(action, self.food)
+
+        new_state = self.get_state()
+
+        reward = self.get_reward()
+
+        self.q_table.update(state, action, reward, new_state)
+
+        if self.snake.check_collision():
+            self.is_running = False
+
+        self.food.update()
+        # if self.is_game_started:
+        #     self.snake.update(self.food)
+        #     if self.snake.check_collision():
+        #         self.is_running = False
+        #     self.food.update()
 
     def render(self):
         self.display.fill((0, 0, 0))
-
-        if not self.is_game_started:
-            self.draw_start_text()
-        else:
-            self.snake.render(self.display)
-            self.food.render(self.display)
-
+        self.snake.render(self.display)
+        self.food.render(self.display)
         pygame.display.update()
-    
-    def draw_start_text(self):
-        #开始游戏Text,无法显示中文
-        font = pygame.font.Font(None, 36)
-        text = font.render("Click To Start Game", True, (255, 255, 255))
-        text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
-        self.display.blit(text, text_rect)
+        # self.display.fill((0, 0, 0))
+
+        # if not self.is_game_started:
+        #     self.draw_start_text()
+        # else:
+        #     self.snake.render(self.display)
+        #     self.food.render(self.display)
+
+        # pygame.display.update()
+    def get_state(self):
+       #返回蛇的现在位置和食物的位置
+        return (self.snake.head_position(), self.food.position)
+
+    def get_reward(self):
+        #返回奖励
+        if self.snake.check_collision():
+            return -1  # 输了
+        elif self.snake.head_position() == self.food.position:
+            return 1  # 吃掉食物奖励
+        else:
+            return 0  # 没有任何奖励
+    # def draw_start_text(self):
+    #     #开始游戏Text,无法显示中文
+    #     font = pygame.font.Font(None, 36)
+    #     text = font.render("Click To Start Game", True, (255, 255, 255))
+    #     text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
+    #     self.display.blit(text, text_rect)
 #Snake
 class Snake:
     def __init__(self):
@@ -78,8 +111,11 @@ class Snake:
         elif new_direction == "RIGHT" and self.direction != (-1, 0):
             self.direction = (1, 0)
 
-    def update(self, food):
+    def update(self, action, food):
         #更新位置以及长度
+        # 根据选择的动作更新游戏状态
+        # 可以自定义游戏逻辑以合并所选的动作
+        # 例如改变蛇的方向或相应地移动蛇
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
 
@@ -115,6 +151,18 @@ class Food:
         #渲染Food
         pygame.draw.rect(display, self.color, (self.position[0], self.position[1], 20, 20))
 
+class QTable:
+    def __init__(self):
+      #初始化 你自己搞
+        pass
+
+    def choose_action(self, state):
+       # 使用 Q Table和 epsilon-greedy 策略选择一个操作
+        pass
+
+    def update(self, state, action, reward, new_state):
+      # 根据当前状态、操作、奖励和新状态更新 Q 表
+        pass
 
 if __name__ == '__main__':
     game = SnakeGame(800, 600)

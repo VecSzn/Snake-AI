@@ -1,14 +1,12 @@
-#我的第一个py游戏框架 using pygame
 import pygame
-
-#Game Class
-#Usage Game()
-class Game:
+#我的第一个PyGame游戏框架
+class MiniGameFramework:
     def __init__(self, width, height):
         self.width = width
         self.height = height
         self.is_running = False
         self.display = None
+        self.clock = pygame.time.Clock()
 
     def initialize(self):
         pygame.init()
@@ -22,11 +20,10 @@ class Game:
 
     def update(self):
         pass
-    # Render Place
+
     def render(self):
-        self.display.fill((0, 0, 0))
-        pygame.display.update()
-    #Run Game Place
+        pass
+
     def run(self):
         self.initialize()
 
@@ -34,5 +31,6 @@ class Game:
             self.handle_events()
             self.update()
             self.render()
+            self.clock.tick(20)
 
         pygame.quit()

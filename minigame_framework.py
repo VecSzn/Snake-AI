@@ -31,6 +31,6 @@ class MiniGameFramework:
             self.handle_events()
             self.update()
             self.render()
-            self.clock.tick(20)
+            self.clock.tick(15)
 
         pygame.quit()

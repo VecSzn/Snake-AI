@@ -8,32 +8,50 @@ class SnakeGame(MiniGameFramework):
         super().__init__(width, height)
         self.snake = Snake() 
         self.food = Food()
+        self.is_game_started = False
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.is_running = False
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_w:
-                    self.snake.change_direction("UP")
-                elif event.key == pygame.K_s:
-                    self.snake.change_direction("DOWN")
-                elif event.key == pygame.K_a:
-                    self.snake.change_direction("LEFT")
-                elif event.key == pygame.K_d:
-                    self.snake.change_direction("RIGHT")
+            if event.type == pygame.MOUSEBUTTONDOWN and not self.is_game_started:
+                self.is_game_started = True
+
+            if self.is_game_started:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_w:
+                        self.snake.change_direction("UP")
+                    elif event.key == pygame.K_s:
+                        self.snake.change_direction("DOWN")
+                    elif event.key == pygame.K_a:
+                        self.snake.change_direction("LEFT")
+                    elif event.key == pygame.K_d:
+                        self.snake.change_direction("RIGHT")
     def update(self):
-        self.snake.update(self.food)
-        if self.snake.check_collision():
-            self.is_running = False
-        self.food.update()
+        if self.is_game_started:
+            self.snake.update(self.food)
+            if self.snake.check_collision():
+                self.is_running = False
+            self.food.update()
 
     def render(self):
         self.display.fill((0, 0, 0))
-        self.snake.render(self.display)
-        self.food.render(self.display) #没写
+
+        if not self.is_game_started:
+            self.draw_start_text()
+        else:
+            self.snake.render(self.display)
+            self.food.render(self.display)
+
         pygame.display.update()
+    
+    def draw_start_text(self):
+        #开始游戏Text,无法显示中文
+        font = pygame.font.Font(None, 36)
+        text = font.render("Click To Start Game", True, (255, 255, 255))
+        text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
+        self.display.blit(text, text_rect)
 #Snake
 class Snake:
     def __init__(self):

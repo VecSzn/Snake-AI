@@ -5,8 +5,9 @@ from minigame_framework import MiniGameFramework
 
 # Snake Game
 class SnakeGame(MiniGameFramework):
-    def __init__(self, width, height):
-        super().__init__(width, height)
+    
+    def __init__(self, width, height, speed):
+        super().__init__(width, height, speed)
         self.snake = Snake()
         self.food = Food()
         self.q_table = QTable()
@@ -17,21 +18,17 @@ class SnakeGame(MiniGameFramework):
             if event.type == pygame.QUIT:
                 self.is_running = False
                 
-            if event.type == pygame.MOUSEBUTTONDOWN and not self.is_game_started:
-                self.is_game_started = True
+            self.is_game_started = True
 
     
-    def get_state(self):
-        print(self.snake.body)
-        return ((self.snake.body, self.food.position))
+
 
     def update(self):
         if self.is_game_started:
-            state = self.get_state()
-            print(state)
-            state_index = self.q_table.get_index(state)
-            print(state_index)
-            self.q_table.state.append(state)
+            self.state = self.snake.get_state()
+            print(self.state)            
+            state_index = self.q_table.get_index(self.state)
+            self.q_table.states.append(self.state)
             self.q_table.current_q.append(np.argmax(self.q_table.qtable[state_index][1]))
             move = self.q_table.choose_action(state_index)
             self.q_table.actions.append(move)
@@ -40,10 +37,10 @@ class SnakeGame(MiniGameFramework):
             self.snake.update(self.food)
             self.food.update()
             
-            new_state = self.get_state()
+            new_state = self.snake.get_state()
 
             state_index = self.q_table.get_index(new_state)
-            self.q_table.next_max_q.append(np.argmax(self.q_table.qtable[state_index][1]))
+            self.q_table.next_max_q.append(max(self.q_table.qtable[state_index][1]))
             
 
     def render(self):
@@ -58,11 +55,12 @@ class SnakeGame(MiniGameFramework):
         pygame.display.update()
 
     def reset_game(self):
-        self.q_table.reward = -1
+        self.q_table.reward -= 1
+        self.q_table.update()
+
         self.snake = Snake()
         self.food = Food()
         self.is_game_started = False
-        self.q_table.update()
 
     def is_out_of_bounds(self):
         head = self.snake.body[0]
@@ -83,6 +81,9 @@ class Snake:
         self.direction = (0, -1)
         self.color = (0, 255, 0)
 
+    def get_state(self):
+        return (list(self.body), game.food.position)
+
     def check_collision(self):
         head = self.body[0]
         if head in self.body[1:]:
@@ -102,7 +103,7 @@ class Snake:
     def update(self, food):
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
-
+    
         if new_head[0] < 0 or new_head[0] >= 800 or new_head[1] < 0 or new_head[1] >= 600:
         #撞墙        
             game.reset_game()
@@ -114,7 +115,7 @@ class Snake:
         self.body.insert(0, new_head)
 
         if new_head == food.position:
-            food.generate_new_position()
+            #food.generate_new_position()
             game.q_table.reward += 1
         else:
             self.body.pop()
@@ -128,9 +129,9 @@ class Snake:
 
 class Food:
     def __init__(self):
-        self.position = (0, 0)
+        self.position = (400, 300)
         self.color = (255, 0, 0)
-        self.generate_new_position()
+        #self.generate_new_position()
 
     def generate_new_position(self):
         x = random.randint(0, 39) * 20
@@ -152,53 +153,52 @@ class QTable:
         self.current_q = []
         self.next_max_q = []
         self.moves = []
-        self.state = []
+        self.states = []
         self.actions = []
         self.reward = 0
 
     def get_index(self, state):
         for i in range(len(self.qtable)):
-            print(self.qtable[i][0])
-            if self.qtable[i][0] == state[0]:
+            if self.qtable[i][0] == state:
                 return i
                 
         self.qtable.append([state, [0, 0, 0, 0]])
-        print('new')
         return len(self.qtable) - 1
         
     
     def choose_action(self, state_index):
-        #if random.random() > self.epsilon:
-        action = np.argmax(self.qtable[state_index][1])
-        print(self.qtable[state_index][1])
-        # else:
-        #     action = random.choice([0, 1, 2, 3])
+        if random.random() > self.epsilon:
+            action = np.argmax(self.qtable[state_index][1])
+        else:
+            action = random.choice([0, 1, 2, 3])
         return action
 
 
     def update(self):
         print('update')
+        print(self.states)
         for i in range(len(self.actions) - 1):
         
-            state_index = self.get_index(self.state[i])
+            state_index = self.get_index(self.states[i])
         
             new_q = (1 - self.learning_rate) * self.current_q[i] + self.learning_rate * (self.reward + (self.discount * self.next_max_q[i]))
             self.qtable[state_index][1][self.actions[i]] = new_q
+            print(new_q)
 
-        self.epsilon -= 0.05
-        
-        state_index = self.get_index(self.state[-1])
+        self.epsilon -= 0.005
+        print('')
+        state_index = self.get_index(self.states[-1])
         self.qtable[state_index][1][self.actions[-1]] = self.reward
             
         self.actions = []
         self.current_q = []
         self.next_max_q = []
         self.moves = []
-        self.state = []
+        self.states = []
         self.reward = 0
 
 if __name__ == "__main__":
-    game = SnakeGame(800, 600)
+    game = SnakeGame(800, 600, 80)
     game.run()
 
 

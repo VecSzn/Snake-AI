@@ -113,7 +113,7 @@ class Snake:
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
 
-        if self.is_danger(new_head) or game.step_without_food > 800:
+        if self.is_danger(new_head) or game.step_without_food > 200:
             game.step_without_food = 0
             game.reset_game()
             return (game.get_state(), game.reward, True)
@@ -162,7 +162,7 @@ class QTable:
         self.learning_rate = 0.01
         self.discount = 0.95
         self.epsilon = 1
-        self.eps_discount = 0.998
+        self.eps_discount = 0.9994
         self.current_q = 0
         self.next_max_q = 0
 
@@ -184,7 +184,7 @@ class QTable:
         game.is_game_started = True
 
 
-game = SnakeGame(800, 600, 60)
+game = SnakeGame(800, 600, 30)
 game.initialize()
 agent = QTable()
 
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         current_state = game.get_state()
         game.reward = 0
         agent.epsilon = agent.epsilon * agent.eps_discount
-        if i % 100 == 0:
+        if i % 500 == 0:
             render = True
             print("episodes:", i)
             print(agent.epsilon)
@@ -219,5 +219,4 @@ if __name__ == "__main__":
 
             if render:
                 game.render()
-
-        game.clock.tick(game.speed)
+                game.clock.tick(game.speed)

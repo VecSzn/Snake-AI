@@ -3,51 +3,36 @@ import random
 import numpy as np
 from minigame_framework import MiniGameFramework
 
+
 # Snake Game
 class SnakeGame(MiniGameFramework):
-    
     def __init__(self, width, height, speed):
         super().__init__(width, height, speed)
         self.snake = Snake()
         self.food = Food()
-        self.q_table = QTable()
         self.is_game_started = False
+        self.reward = -10
+        self.new_direction = 0
+        self.step_without_food = 0
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.is_running = False
-                
+
             self.is_game_started = True
-
-    
-
 
     def update(self):
         if self.is_game_started:
-            self.state = self.snake.get_state()
-            print(self.state)            
-            state_index = self.q_table.get_index(self.state)
-            self.q_table.states.append(self.state)
-            self.q_table.current_q.append(np.argmax(self.q_table.qtable[state_index][1]))
-            move = self.q_table.choose_action(state_index)
-            self.q_table.actions.append(move)
-
-            self.snake.change_direction(move)
-            self.snake.update(self.food)
+            self.snake.update()
             self.food.update()
-            
-            new_state = self.snake.get_state()
-
-            state_index = self.q_table.get_index(new_state)
-            self.q_table.next_max_q.append(max(self.q_table.qtable[state_index][1]))
-            
 
     def render(self):
         self.display.fill((0, 0, 0))
 
         if not self.is_game_started:
-            self.draw_start_text()
+            pass
+            # self.draw_start_text()
         else:
             self.snake.render(self.display)
             self.food.render(self.display)
@@ -55,24 +40,38 @@ class SnakeGame(MiniGameFramework):
         pygame.display.update()
 
     def reset_game(self):
-        self.q_table.reward -= 1
-        self.q_table.update()
-
         self.snake = Snake()
         self.food = Food()
         self.is_game_started = False
+        self.reward -= 10
 
-    def is_out_of_bounds(self):
+    # def draw_start_text(self):
+    #     font = pygame.font.Font(None, 36)
+    #     text = font.render("Click To Start Game", True, (255, 255, 255))
+    #     text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
+    #     self.display.blit(text, text_rect)
+
+    def get_state(self):
         head = self.snake.body[0]
-        return head[0] < 0 or head[0] >= self.width or head[1] < 0 or head[1] >= self.height
-
-    def draw_start_text(self):
-        font = pygame.font.Font(None, 36)
-        text = font.render("Click To Start Game", True, (255, 255, 255))
-        text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
-        self.display.blit(text, text_rect)
-
-
+        new_head = (
+            head[0] + self.snake.direction[0] * 20,
+            head[1] + self.snake.direction[1] * 20,
+        )
+        state = [
+            int(self.new_direction == 0),
+            int(self.new_direction == 1),
+            int(self.new_direction == 2),
+            int(self.new_direction == 3),
+            int(self.food.position[1] > head[1]),
+            int(self.food.position[1] < head[1]),
+            int(self.food.position[0] < head[0]),
+            int(self.food.position[0] > head[0]),
+            int(game.snake.is_danger((new_head[0], new_head[1] - 20))),
+            int(game.snake.is_danger((new_head[0], new_head[1] + 20))),
+            int(game.snake.is_danger((new_head[0] - 20, new_head[1]))),
+            int(game.snake.is_danger((new_head[0] + 20, new_head[1]))),
+        ]
+        return tuple(state)
 
 
 class Snake:
@@ -81,14 +80,24 @@ class Snake:
         self.direction = (0, -1)
         self.color = (0, 255, 0)
 
-    def get_state(self):
-        return (list(self.body), game.food.position)
+    def is_out_of_bounds(self, head):
+        return (
+            head[0] < 0
+            or head[0] >= game.width
+            or head[1] < 0
+            or head[1] >= game.height
+        )
 
-    def check_collision(self):
-        head = self.body[0]
+    def check_collision(self, head):
         if head in self.body[1:]:
             return True
         return False
+
+    def is_danger(self, head):
+        if self.check_collision(head) or self.is_out_of_bounds(head):
+            return True
+        else:
+            return False
 
     def change_direction(self, new_direction):
         if new_direction == 0 and self.direction != (0, 1):
@@ -100,38 +109,38 @@ class Snake:
         elif new_direction == 3 and self.direction != (-1, 0):
             self.direction = (1, 0)
 
-    def update(self, food):
+    def update(self):
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
-    
-        if new_head[0] < 0 or new_head[0] >= 800 or new_head[1] < 0 or new_head[1] >= 600:
-        #撞墙        
+
+        if self.is_danger(new_head) or game.step_without_food > 800:
+            game.step_without_food = 0
             game.reset_game()
-            return
-        if self.check_collision():
-            game.reset_game()
-            return
-        
+            return (game.get_state(), game.reward, True)
+
         self.body.insert(0, new_head)
 
-        if new_head == food.position:
-            #food.generate_new_position()
-            game.q_table.reward += 1
+        game.step_without_food += 1
+
+        if new_head == game.food.position:
+            game.reward += 1
+            game.food.generate_new_position()
+            game.step_without_food = 0
         else:
             self.body.pop()
+
+        return (game.get_state(), game.reward, False)
 
     def render(self, display):
         for segment in self.body:
             pygame.draw.rect(display, self.color, (segment[0], segment[1], 20, 20))
 
 
-
-
 class Food:
     def __init__(self):
         self.position = (400, 300)
         self.color = (255, 0, 0)
-        #self.generate_new_position()
+        self.generate_new_position()
 
     def generate_new_position(self):
         x = random.randint(0, 39) * 20
@@ -142,63 +151,73 @@ class Food:
         pass
 
     def render(self, display):
-        pygame.draw.rect(display, self.color, (self.position[0], self.position[1], 20, 20))
+        pygame.draw.rect(
+            display, self.color, (self.position[0], self.position[1], 20, 20)
+        )
+
 
 class QTable:
     def __init__(self):
-        self.qtable = []
-        self.learning_rate = 0.2
-        self.discount = 0.9
+        self.qtable = np.zeros([2] * 12 + [4])
+        self.learning_rate = 0.01
+        self.discount = 0.95
         self.epsilon = 1
-        self.current_q = []
-        self.next_max_q = []
-        self.moves = []
-        self.states = []
-        self.actions = []
-        self.reward = 0
+        self.eps_discount = 0.998
+        self.current_q = 0
+        self.next_max_q = 0
 
-    def get_index(self, state):
-        for i in range(len(self.qtable)):
-            if self.qtable[i][0] == state:
-                return i
-                
-        self.qtable.append([state, [0, 0, 0, 0]])
-        return len(self.qtable) - 1
-        
-    
-    def choose_action(self, state_index):
+    def choose_action(self, state):
         if random.random() > self.epsilon:
-            action = np.argmax(self.qtable[state_index][1])
+            return np.argmax(self.qtable[state])
         else:
-            action = random.choice([0, 1, 2, 3])
-        return action
+            return random.choice([0, 1, 2, 3])
+
+    def update(self, reward, state, action, done):
+        if not done:
+            new_q = (1 - self.learning_rate) * self.current_q + self.learning_rate * (
+                reward + (self.discount * self.next_max_q)
+            )
+            self.qtable[state][action] = new_q
+        else:
+            self.qtable[state][action] = reward
+
+        game.is_game_started = True
 
 
-    def update(self):
-        print('update')
-        print(self.states)
-        for i in range(len(self.actions) - 1):
-        
-            state_index = self.get_index(self.states[i])
-        
-            new_q = (1 - self.learning_rate) * self.current_q[i] + self.learning_rate * (self.reward + (self.discount * self.next_max_q[i]))
-            self.qtable[state_index][1][self.actions[i]] = new_q
-            print(new_q)
+game = SnakeGame(800, 600, 60)
+game.initialize()
+agent = QTable()
 
-        self.epsilon -= 0.005
-        print('')
-        state_index = self.get_index(self.states[-1])
-        self.qtable[state_index][1][self.actions[-1]] = self.reward
-            
-        self.actions = []
-        self.current_q = []
-        self.next_max_q = []
-        self.moves = []
-        self.states = []
-        self.reward = 0
 
 if __name__ == "__main__":
-    game = SnakeGame(800, 600, 80)
-    game.run()
+    for i in range(10000):
+        if not game.is_running:
+            break
 
+        render = False
+        done = False
+        game.handle_events()
+        current_state = game.get_state()
+        game.reward = 0
+        agent.epsilon = agent.epsilon * agent.eps_discount
+        if i % 100 == 0:
+            render = True
+            print("episodes:", i)
+            print(agent.epsilon)
 
+        while not done and game.is_running:
+            action = agent.choose_action(current_state)
+            agent.current_q = np.max(agent.qtable[current_state])
+
+            game.snake.change_direction(action)
+
+            new_state, reward, done = game.snake.update()
+
+            agent.next_max_q = np.max(agent.qtable[new_state])
+            agent.update(reward, current_state, action, done)
+            current_state = new_state
+
+            if render:
+                game.render()
+
+        game.clock.tick(game.speed)

@@ -11,7 +11,7 @@ class SnakeGame(MiniGameFramework):
         self.snake = Snake()
         self.food = Food()
         self.is_game_started = False
-        self.reward = -10
+        self.reward = 0
         self.new_direction = 0
         self.step_without_food = 0
 
@@ -42,8 +42,8 @@ class SnakeGame(MiniGameFramework):
     def reset_game(self):
         self.snake = Snake()
         self.food = Food()
-        self.is_game_started = False
         self.reward -= 10
+        self.is_game_started = False
 
     # def draw_start_text(self):
     #     font = pygame.font.Font(None, 36)
@@ -79,6 +79,7 @@ class Snake:
         self.body = [(200, 200)]
         self.direction = (0, -1)
         self.color = (0, 255, 0)
+        self.direction_n = 0
 
     def is_out_of_bounds(self, head):
         return (
@@ -95,9 +96,14 @@ class Snake:
 
     def is_danger(self, head):
         if self.check_collision(head) or self.is_out_of_bounds(head):
-            return True
-        else:
-            return False
+            if self.check_collision(head):
+                if self.body[1] == head:
+                    return False
+                else:
+                    return True
+            else:
+                return True
+        return False
 
     def change_direction(self, new_direction):
         if new_direction == 0 and self.direction != (0, 1):
@@ -109,11 +115,13 @@ class Snake:
         elif new_direction == 3 and self.direction != (-1, 0):
             self.direction = (1, 0)
 
-    def update(self):
+    def update(self, action):
+        self.direction_n = action
+        self.change_direction(action)
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
 
-        if self.is_danger(new_head) or game.step_without_food > 200:
+        if self.is_danger(new_head) or game.step_without_food > 800:
             game.step_without_food = 0
             game.reset_game()
             return (game.get_state(), game.reward, True)
@@ -162,25 +170,40 @@ class QTable:
         self.learning_rate = 0.01
         self.discount = 0.95
         self.epsilon = 1
-        self.eps_discount = 0.9994
+        self.eps_discount = 0.9992
         self.current_q = 0
         self.next_max_q = 0
 
     def choose_action(self, state):
+        d = game.snake.direction_n
+        if d == 0:
+            nd = 1
+        elif d == 1:
+            nd = 0
+        elif d == 2:
+            nd = 3
+        elif d == 3:
+            nd = 2
+
+        actions = np.zeros([4])
+        for i in range(4):
+            if i != nd:
+                actions[i] = self.qtable[state][i]
+            else:
+                actions[i] = -np.inf
+
         if random.random() > self.epsilon:
-            return np.argmax(self.qtable[state])
+            return np.argmax(actions)
         else:
-            return random.choice([0, 1, 2, 3])
+            l = [0, 1, 2, 3]
+            l.remove(nd)
+            return random.choice(l)
 
-    def update(self, reward, state, action, done):
-        if not done:
-            new_q = (1 - self.learning_rate) * self.current_q + self.learning_rate * (
-                reward + (self.discount * self.next_max_q)
-            )
-            self.qtable[state][action] = new_q
-        else:
-            self.qtable[state][action] = reward
-
+    def update(self, reward, state, action):
+        new_q = (1 - self.learning_rate) * self.current_q + self.learning_rate * (
+            reward + (self.discount * self.next_max_q)
+        )
+        self.qtable[state][action] = new_q
         game.is_game_started = True
 
 
@@ -209,12 +232,10 @@ if __name__ == "__main__":
             action = agent.choose_action(current_state)
             agent.current_q = np.max(agent.qtable[current_state])
 
-            game.snake.change_direction(action)
-
-            new_state, reward, done = game.snake.update()
+            new_state, reward, done = game.snake.update(action)
 
             agent.next_max_q = np.max(agent.qtable[new_state])
-            agent.update(reward, current_state, action, done)
+            agent.update(reward, current_state, action)
             current_state = new_state
 
             if render:

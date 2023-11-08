@@ -80,6 +80,7 @@ class Snake:
         self.direction = (0, -1)
         self.color = (0, 255, 0)
         self.direction_n = 0
+        self.n = 0
 
     def is_out_of_bounds(self, head):
         return (
@@ -96,13 +97,8 @@ class Snake:
 
     def is_danger(self, head):
         if self.check_collision(head) or self.is_out_of_bounds(head):
-            if self.check_collision(head):
-                if self.body[1] == head:
-                    return False
-                else:
-                    return True
-            else:
-                return True
+            return True
+
         return False
 
     def change_direction(self, new_direction):
@@ -121,7 +117,7 @@ class Snake:
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
 
-        if self.is_danger(new_head) or game.step_without_food > 800:
+        if self.is_danger(new_head) or game.step_without_food > 1000:
             game.step_without_food = 0
             game.reset_game()
             return (game.get_state(), game.reward, True)
@@ -170,34 +166,15 @@ class QTable:
         self.learning_rate = 0.01
         self.discount = 0.95
         self.epsilon = 1
-        self.eps_discount = 0.9992
+        self.eps_discount = 0.98
         self.current_q = 0
         self.next_max_q = 0
 
     def choose_action(self, state):
-        d = game.snake.direction_n
-        if d == 0:
-            nd = 1
-        elif d == 1:
-            nd = 0
-        elif d == 2:
-            nd = 3
-        elif d == 3:
-            nd = 2
-
-        actions = np.zeros([4])
-        for i in range(4):
-            if i != nd:
-                actions[i] = self.qtable[state][i]
-            else:
-                actions[i] = -np.inf
-
         if random.random() > self.epsilon:
-            return np.argmax(actions)
+            return np.argmax(self.qtable[state])
         else:
-            l = [0, 1, 2, 3]
-            l.remove(nd)
-            return random.choice(l)
+            return random.choice([0, 1, 2, 3])
 
     def update(self, reward, state, action):
         new_q = (1 - self.learning_rate) * self.current_q + self.learning_rate * (
@@ -210,10 +187,10 @@ class QTable:
 game = SnakeGame(800, 600, 30)
 game.initialize()
 agent = QTable()
-
+length = []
 
 if __name__ == "__main__":
-    for i in range(10000):
+    for i in range(1, 100000):
         if not game.is_running:
             break
 
@@ -227,6 +204,8 @@ if __name__ == "__main__":
             render = True
             print("episodes:", i)
             print(agent.epsilon)
+            print(np.average(length))
+            length = []
 
         while not done and game.is_running:
             action = agent.choose_action(current_state)
@@ -237,6 +216,7 @@ if __name__ == "__main__":
             agent.next_max_q = np.max(agent.qtable[new_state])
             agent.update(reward, current_state, action)
             current_state = new_state
+            length.append(len(game.snake.body))
 
             if render:
                 game.render()

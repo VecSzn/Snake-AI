@@ -198,7 +198,7 @@ agent = QTable()
 length = []
 
 if __name__ == "__main__":
-    for i in range(1, 10000):
+    for i in range(1, 999999):
         if not game.is_running:
             break
 

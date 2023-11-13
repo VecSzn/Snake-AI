@@ -192,7 +192,7 @@ class QTable:
         game.is_game_started = True
 
 
-game = SnakeGame(800, 600, 30)
+game = SnakeGame(800, 600, 60)
 game.initialize()
 agent = QTable()
 length = []
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         game.reward = 0
         agent.epsilon = agent.epsilon * agent.eps_discount
 
-        if i % 250 == 0:
+        if i % 500 == 0:
             print("episodes:", i)
             print(agent.epsilon)
             print(np.average(length))

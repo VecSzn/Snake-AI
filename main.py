@@ -96,7 +96,6 @@ class Snake:
         head = self.body[0]
         new_head = (head[0] + self.direction[0] * 20, head[1] + self.direction[1] * 20)
         done = False
-        reward = -1
 
         if self.is_danger(new_head) or self.step_without_food > 1000:
             done = True
@@ -110,7 +109,9 @@ class Snake:
             self.step_without_food += 1
 
             if new_dis[0] < current_dis[0] or new_dis[1] < current_dis[1]:
-                reward = 0.2
+                reward = 0.5
+            else:
+                reward = -1
 
             if new_head == game.food.position:
                 reward = 1
@@ -219,12 +220,9 @@ if __name__ == "__main__":
             print(f"Epsilon: {agent.epsilon}")
             print(f"Average Score: {np.average(avg_score)}")
             print("")
-            plt.plot(x, scores)
-            plt.show()
-
             avg_score = []
 
-            render = True
+            # render = True
 
         while not done and game.is_running:
             game.handle_events()

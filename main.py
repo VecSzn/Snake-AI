@@ -3,6 +3,7 @@ import random
 import numpy as np
 from minigame_framework import MiniGameFramework
 import time
+import matplotlib.pyplot as plt
 
 
 # Snake Game
@@ -11,7 +12,6 @@ class SnakeGame(MiniGameFramework):
         super().__init__(width, height, speed, name)
         self.snake = Snake()
         self.food = Food()
-        self.step_without_food = 0
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -29,21 +29,15 @@ class SnakeGame(MiniGameFramework):
         self.snake = Snake()
         self.food = Food()
 
-    # def draw_start_text(self):
-    #     font = pygame.font.Font(None, 36)
-    #     text = font.render("Click To Start Game", True, (255, 255, 255))
-    #     text_rect = text.get_rect(center=(self.width // 2, self.height // 2))
-    #     self.display.blit(text, text_rect)
-
     def get_state(self):
         head = self.snake.body[0]
         state = [
-            self.snake.direction_n,
-            int(self.food.position[1] < head[1]),
+            self.snake.direction_n,  # Direction
+            int(self.food.position[1] < head[1]),  # Food positions
             int(self.food.position[1] > head[1]),
             int(self.food.position[0] < head[0]),
             int(self.food.position[0] > head[0]),
-            int(game.snake.is_danger((head[0], head[1] - 20))),
+            int(game.snake.is_danger((head[0], head[1] - 20))),  # Dangers around
             int(game.snake.is_danger((head[0], head[1] + 20))),
             int(game.snake.is_danger((head[0] - 20, head[1]))),
             int(game.snake.is_danger((head[0] + 20, head[1]))),
@@ -65,6 +59,7 @@ class Snake:
         self.direction = (0, -1)
         self.color = (0, 255, 0)
         self.direction_n = 0
+        self.step_without_food = 0
 
     def is_out_of_bounds(self, head):
         return (
@@ -103,23 +98,19 @@ class Snake:
         done = False
         reward = -1
 
-        if self.is_danger(new_head) or game.step_without_food > 1000:
-            game.step_without_food = 0
-            game.reset_game()
+        if self.is_danger(new_head) or self.step_without_food > 1000:
             done = True
             reward = -10
 
         else:
             current_dis = game.get_distance()
-
             self.body.insert(0, new_head)
-
             new_dis = game.get_distance()
 
-            game.step_without_food += 1
+            self.step_without_food += 1
 
             if new_dis[0] < current_dis[0] or new_dis[1] < current_dis[1]:
-                reward = 0.5
+                reward = 0.2
 
             if new_head == game.food.position:
                 reward = 1
@@ -127,7 +118,7 @@ class Snake:
                 while game.food.position in self.body:
                     game.food.generate_new_position()
 
-                game.step_without_food = 0
+                self.step_without_food = 0
             else:
                 self.body.pop()
 
@@ -207,7 +198,10 @@ class QTable:
 game = SnakeGame(800, 600, 60, "Snake Game")
 game.initialize()
 agent = QTable()
-length = []
+scores = []
+avg_score = []
+x = []
+
 
 if __name__ == "__main__":
     for i in range(1, 999999):
@@ -221,11 +215,16 @@ if __name__ == "__main__":
         agent.epsilon = agent.epsilon * agent.eps_discount
 
         if i % 500 == 0:
-            print("episodes:", i)
-            print(agent.epsilon)
-            print(f"Average Score: {np.average(length) - 1}")
+            print(f"Episodes: {i}")
+            print(f"Epsilon: {agent.epsilon}")
+            print(f"Average Score: {np.average(avg_score)}")
+            print("")
+            plt.plot(x, scores)
+            plt.show()
+
+            avg_score = []
+
             render = True
-            length = []
 
         while not done and game.is_running:
             game.handle_events()
@@ -233,11 +232,18 @@ if __name__ == "__main__":
 
             new_state, reward, done = game.snake.update(action)
             agent.update(reward, current_state, new_state, action)
+
             current_state = new_state
-            length.append(len(game.snake.body))
 
             if render:
                 game.render()
                 game.clock.tick(game.speed)
+
+            if done:
+                score = len(game.snake.body) - 1
+                avg_score.append(score)
+                scores.append(score)
+                x.append(i)
+                game.reset_game()
 
 np.save("q_table.npy", agent.qtable)

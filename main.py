@@ -31,12 +31,32 @@ class SnakeGame(MiniGameFramework):
 
     def get_state(self):
         head = self.snake.body[0]
+        new_head = (
+            head[0] + self.snake.direction[0] * 40,
+            head[1] + self.snake.direction[1] * 40,
+        )
+        new__head = (
+            head[0] + self.snake.direction[0] * 60,
+            head[1] + self.snake.direction[1] * 60,
+        )
+        new___head = (
+            head[0] + self.snake.direction[0] * 80,
+            head[1] + self.snake.direction[1] * 80,
+        )
+        new____head = (
+            head[0] + self.snake.direction[0] * 100,
+            head[1] + self.snake.direction[1] * 100,
+        )
         state = [
             self.snake.direction_n,  # Direction
             int(self.food.position[1] < head[1]),  # Food positions
             int(self.food.position[1] > head[1]),
             int(self.food.position[0] < head[0]),
             int(self.food.position[0] > head[0]),
+            int(game.snake.is_danger(new_head)),  # Dangers around
+            int(game.snake.is_danger(new__head)),
+            int(game.snake.is_danger(new___head)),
+            int(game.snake.is_danger(new____head)),
             int(game.snake.is_danger((head[0], head[1] - 20))),  # Dangers around
             int(game.snake.is_danger((head[0], head[1] + 20))),
             int(game.snake.is_danger((head[0] - 20, head[1]))),
@@ -105,11 +125,9 @@ class Snake:
             current_dis = game.get_distance()
             self.body.insert(0, new_head)
             new_dis = game.get_distance()
-
             self.step_without_food += 1
-
             if new_dis[0] < current_dis[0] or new_dis[1] < current_dis[1]:
-                reward = 0.5
+                reward = 0.2
             else:
                 reward = -1
 
@@ -118,11 +136,9 @@ class Snake:
 
                 while game.food.position in self.body:
                     game.food.generate_new_position()
-
-                self.step_without_food = 0
+                    self.step_without_food = 0
             else:
                 self.body.pop()
-
         return (game.get_state(), reward, done)
 
     def render(self, display):
@@ -149,7 +165,7 @@ class Food:
 
 class QTable:
     def __init__(self):
-        self.qtable = np.zeros([4] + [2] * 8 + [4])
+        self.qtable = np.zeros([4] + [2] * 12 + [4])
         self.learning_rate = 0.007
         self.discount = 0.95
         self.epsilon = 1
@@ -219,10 +235,11 @@ if __name__ == "__main__":
             print(f"Episodes: {i}")
             print(f"Epsilon: {agent.epsilon}")
             print(f"Average Score: {np.average(avg_score)}")
+            print(f"Max Score: {max(avg_score)}")
             print("")
             avg_score = []
 
-            # render = True
+            render = True
 
         while not done and game.is_running:
             game.handle_events()
@@ -232,11 +249,12 @@ if __name__ == "__main__":
             agent.update(reward, current_state, new_state, action)
 
             current_state = new_state
-
             if render:
+                game.set_name(
+                    f"Snake Game   Length:{game.snake.body.__len__()}   Steps Without Food:{game.snake.step_without_food}"
+                )
                 game.render()
                 game.clock.tick(game.speed)
-
             if done:
                 score = len(game.snake.body) - 1
                 avg_score.append(score)

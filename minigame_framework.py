@@ -29,6 +29,10 @@ class MiniGameFramework:
     def render(self):
         pass
 
+    def set_name(self, name):
+        self.name = name
+        pygame.display.set_caption(self.name)
+
     def run(self):
         self.initialize()
 

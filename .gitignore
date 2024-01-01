@@ -1,9 +1,2 @@
-
 *.pyc
-.vscode/settings.json
 .DS_Store
-*.npy
-*.npy
-*.npy
-q_table.npy
-*.npy

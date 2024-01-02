@@ -1,9 +1,10 @@
+from math import pi
 import pygame
 
 
 # 我的第一个PyGame游戏框架
 class MiniGameFramework:
-    def __init__(self, width, height, speed, name):
+    def __init__(self, width, height, speed, name, pixel_size):
         self.width = width
         self.height = height
         self.is_running = False
@@ -11,11 +12,14 @@ class MiniGameFramework:
         self.speed = speed
         self.name = name
         self.clock = pygame.time.Clock()
+        self.pixel_size = pixel_size
 
     def initialize(self):
         pygame.init()
         pygame.display.set_caption(self.name)
-        self.display = pygame.display.set_mode((self.width, self.height))
+        self.display = pygame.display.set_mode(
+            (self.width * self.pixel_size, self.height * self.pixel_size)
+        )
         self.is_running = True
 
     def handle_events(self):

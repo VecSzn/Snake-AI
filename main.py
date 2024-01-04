@@ -1,17 +1,16 @@
 import pygame
 import random
 import numpy as np
-from minigame_framework import MiniGameFramework
 import matplotlib.pyplot as plt
 import cv2
+from minigame_framework import MiniGameFramework
 
 
 # Snake Game
 class SnakeGame(MiniGameFramework):
     def __init__(self, width, height, speed, name, pixel_size):
         super().__init__(width, height, speed, name, pixel_size)
-        self.snake = Snake(width, height)
-        self.food = Food(width, height, pixel_size)
+        self.reset_game()
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -29,17 +28,18 @@ class SnakeGame(MiniGameFramework):
     def reset_game(self):
         self.snake = Snake(self.width, self.height)
         self.food = Food(self.width, self.height, self.pixel_size)
+        self.img = np.zeros((self.height, self.width, 1))
 
     def get_state(self):
-        img = np.zeros((self.height, self.width, 1))
+        img = self.img // 1.5
         for x in range(self.width):
             for y in range(self.height):
-                if (x * self.pixel_size, y * self.pixel_size) in self.snake.body:
+                pos = (x * self.pixel_size, y * self.pixel_size)
+                if pos in self.snake.body or pos == self.food.position:
                     img[y, x, :] = 255
-                elif (x * self.pixel_size, y * self.pixel_size) == self.food.position:
-                    img[y, x, :] = 128
 
         img = img.astype(np.uint8)
+        self.img = img
         return img
 
     def get_distance(self):
@@ -158,7 +158,5 @@ for i in range(100):
         action = np.random.choice([0, 1, 2, 3])
         state, done = game.snake.update(action)
         game.set_name(f"Snake Game   SWF:{game.snake.step_without_food}")
-    x.append(len(game.snake.body))
-
-
-print(max(x))
+        cv2.imshow("img", state)
+        game.render()

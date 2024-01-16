@@ -1,8 +1,7 @@
 import pygame
 import random
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
+from dqn import Agent, ReplayBuffer
 from minigame_framework import MiniGameFramework
 
 
@@ -56,8 +55,8 @@ class Snake:
         self.body = [(width * 10, height * 10)]
         self.direction = (0, -1)
         self.color = (0, 255, 0)
-        self.direction_n = 0
         self.step_without_food = 0
+        self.direction = (0, -1)
 
     def is_out_of_bounds(self, head):
         return (
@@ -89,9 +88,10 @@ class Snake:
             self.direction = (1, 0)
 
     def update(self, action):
-        self.direction_n = action
         self.change_direction(action)
         head = self.body[0]
+        reward = -0.1
+        current_dis = game.get_distance()
         new_head = (
             head[0] + self.direction[0] * game.pixel_size,
             head[1] + self.direction[1] * game.pixel_size,
@@ -100,12 +100,18 @@ class Snake:
 
         if self.is_danger(new_head) or self.step_without_food > 1000:
             done = True
+            reward = -1
 
         else:
             self.body.insert(0, new_head)
             self.step_without_food += 1
 
+            dis = game.get_distance()
+            if current_dis[0] > dis[0] or current_dis[1] > dis[1]:
+                reward = 0.3
+
             if new_head == game.food.position:
+                reward = 1
                 while game.food.position in self.body:
                     game.food.generate_new_position()
 
@@ -113,7 +119,7 @@ class Snake:
             else:
                 self.body.pop()
 
-        return (game.get_state(), done)
+        return (game.get_state(), done, reward)
 
     def render(self, display):
         for segment in self.body:
@@ -148,15 +154,31 @@ class Food:
 
 game = SnakeGame(40, 30, 20, "Snake Game", 20)
 game.initialize()
-x = []
 
-for i in range(100):
+agent = Agent(game.width, game.height)
+steps = 0
+
+a = []
+for i in range(1, 1000 + 1):
+    data = ReplayBuffer()
     game.reset_game()
+    current_state = game.get_state()
     done = False
+    if not i % 50:
+        print(np.average(a))
+        print(agent.epsilon)
+        a = []
+
     while not done:
         game.handle_events()
-        action = np.random.choice([0, 1, 2, 3])
-        state, done = game.snake.update(action)
-        game.set_name(f"Snake Game   SWF:{game.snake.step_without_food}")
-        cv2.imshow("img", state)
-        game.render()
+        action = agent.get_action(current_state)
+        state, done, reward = game.snake.update(action)
+        data.add(current_state, action, reward, state)
+        current_state = state
+        steps += 1
+
+    a.append(len(game.snake.body))
+    batch = data.batching(32)
+    agent.train(batch)
+    if steps >= 1000:
+        agent.set_weights()

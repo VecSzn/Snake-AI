@@ -1,7 +1,7 @@
 import pygame
 import random
 import numpy as np
-from dqn import Agent, ReplayBuffer
+from dqn import Agent
 from minigame_framework import MiniGameFramework
 
 
@@ -152,15 +152,14 @@ class Food:
         )
 
 
-game = SnakeGame(40, 30, 20, "Snake Game", 20)
+game = SnakeGame(10, 10, 20, "Snake Game", 20)
 game.initialize()
 
 agent = Agent(game.width, game.height)
 steps = 0
 
 a = []
-for i in range(1, 1000 + 1):
-    data = ReplayBuffer()
+for i in range(1, 10000 + 1):
     game.reset_game()
     current_state = game.get_state()
     done = False
@@ -173,12 +172,12 @@ for i in range(1, 1000 + 1):
         game.handle_events()
         action = agent.get_action(current_state)
         state, done, reward = game.snake.update(action)
-        data.add(current_state, action, reward, state)
+        agent.add(current_state, action, reward, state)
         current_state = state
         steps += 1
 
     a.append(len(game.snake.body))
-    batch = data.batching(32)
+    batch = agent.batching(64)
     agent.train(batch)
     if steps >= 1000:
         agent.set_weights()

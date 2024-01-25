@@ -27,7 +27,7 @@ class Agent:
 
     def get_action(self, state):
         if np.random.random() < self.epsilon:
-            return np.random.randint(0, 4)
+            return np.random.randint(0, 3)
         else:
             q_values = self.q_net(np.array([state]))[0]
             return np.argmax(q_values)

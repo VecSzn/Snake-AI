@@ -30,22 +30,24 @@ class SnakeGame(MiniGameFramework):
         self.img = np.zeros((self.height, self.width, 1))
 
     def get_state(self):
-        img = self.img // 1.5
-        for x in range(self.width):
-            for y in range(self.height):
-                pos = (x * self.pixel_size, y * self.pixel_size)
-                if pos in self.snake.body or pos == self.food.position:
-                    img[y, x, :] = 255
-
-        img = img.astype(np.uint8)
-        self.img = img
-        return img
+        head = self.snake.body[0]
+        state = [
+            int(self.food.position[1] < head[1]),  # Food positions
+            int(self.food.position[1] > head[1]),
+            int(self.food.position[0] < head[0]),
+            int(self.food.position[0] > head[0]),
+            int(self.snake.is_danger((head[0], head[1] - 20))),  # Dangers around
+            int(self.snake.is_danger((head[0], head[1] + 20))),
+            int(self.snake.is_danger((head[0] - 20, head[1]))),
+            int(self.snake.is_danger((head[0] + 20, head[1]))),
+        ]
+        return state
 
     def get_distance(self):
         head = self.snake.body[0]
-        distance = (
-            abs(head[0] - self.food.position[0]),
-            abs(head[1] - self.food.position[1]),
+        distance = np.sqrt(
+            np.square(head[0] - self.food.position[0])
+            + np.square(head[1] - self.food.position[1])
         )
         return distance
 
@@ -90,7 +92,7 @@ class Snake:
     def update(self, action):
         self.change_direction(action)
         head = self.body[0]
-        reward = -0.1
+        reward = -0.2
         current_dis = game.get_distance()
         new_head = (
             head[0] + self.direction[0] * game.pixel_size,
@@ -107,8 +109,8 @@ class Snake:
             self.step_without_food += 1
 
             dis = game.get_distance()
-            if current_dis[0] > dis[0] or current_dis[1] > dis[1]:
-                reward = 0.3
+            if current_dis > dis:
+                reward = 0.1
 
             if new_head == game.food.position:
                 reward = 1
@@ -152,21 +154,29 @@ class Food:
         )
 
 
-game = SnakeGame(10, 10, 20, "Snake Game", 20)
+game = SnakeGame(40, 30, 20, "Snake Game", 20)
 game.initialize()
 
-agent = Agent(game.width, game.height)
+agent = Agent()
 steps = 0
 
 a = []
 for i in range(1, 10000 + 1):
+    render = False
     game.reset_game()
     current_state = game.get_state()
     done = False
-    if not i % 50:
-        print(np.average(a))
-        print(agent.epsilon)
+
+    if not i % 25:
+        print(f"Episode: {i}")
+        print(f"Average Score {np.average(a)}")
+        print(f"Epsilon: {agent.epsilon}")
+        print()
+        render = True
         a = []
+
+        if agent.epsilon < 0.03:
+            agent.epsilon = 0
 
     while not done:
         game.handle_events()
@@ -174,6 +184,8 @@ for i in range(1, 10000 + 1):
         state, done, reward = game.snake.update(action)
         agent.add(current_state, action, reward, state)
         current_state = state
+        if render:
+            game.render()
         steps += 1
 
     a.append(len(game.snake.body))

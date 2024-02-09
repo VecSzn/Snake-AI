@@ -3,26 +3,21 @@ import numpy as np
 
 
 class Agent:
-    def __init__(self, width, height, epsilon=1, gamma=0.9):
-        self.width = width
-        self.height = height
+    def __init__(self, epsilon=1, gamma=0.9):
         self.gamma = gamma
         self.epsilon = epsilon
         self.q_net = self.create_model()
         self.target_net = self.create_model()
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.1)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+        self.buffer = []
 
     def create_model(self):
         model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Input(shape=(self.height, self.width, 1)))
-        model.add(tf.keras.layers.Conv2D(32, (5, 5), activation="relu"))
-        model.add(tf.keras.layers.MaxPooling2D((2, 2)))
-        model.add(tf.keras.layers.Conv2D(32, (3, 3), activation="relu"))
-        model.add(tf.keras.layers.Flatten())
+        model.add(tf.keras.layers.Input(shape=(8)))
+        model.add(tf.keras.layers.Dense(64, activation="relu"))
         model.add(tf.keras.layers.Dense(64, activation="relu"))
         model.add(tf.keras.layers.Dense(4, activation="softmax"))
 
-        model.compile(loss=tf.keras.losses.MSE, optimizer="adam")
         return model
 
     def get_action(self, state):
@@ -55,11 +50,6 @@ class Agent:
 
     def set_weights(self):
         self.target_net.set_weights(self.q_net.get_weights())
-
-
-class ReplayBuffer:
-    def __init__(self):
-        self.buffer = []
 
     def add(self, state, action, reward, next_state):
         self.buffer.append([state, action, reward, next_state])

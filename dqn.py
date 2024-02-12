@@ -7,7 +7,6 @@ class Agent:
         self.gamma = gamma
         self.epsilon = epsilon
         self.q_net = self.create_model()
-        self.target_net = self.create_model()
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
         self.buffer = []
 
@@ -35,7 +34,7 @@ class Agent:
                 target = reward[i]
             else:
                 target = reward[i] + self.gamma * np.max(
-                    self.target_net(np.array([next_state[i]]))
+                    self.q_net(np.array([next_state[i]]))
                 )
             targets.append(target)
 
@@ -47,9 +46,6 @@ class Agent:
         self.optimizer.apply_gradients(zip(grads, self.q_net.trainable_variables))
 
         self.epsilon *= 0.999
-
-    def set_weights(self):
-        self.target_net.set_weights(self.q_net.get_weights())
 
     def add(self, state, action, reward, next_state):
         self.buffer.append([state, action, reward, next_state])

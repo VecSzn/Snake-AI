@@ -160,7 +160,7 @@ game.initialize()
 agent = Agent()
 steps = 0
 
-a = []
+average = []
 for i in range(1, 10000 + 1):
     render = False
     game.reset_game()
@@ -169,11 +169,11 @@ for i in range(1, 10000 + 1):
 
     if not i % 25:
         print(f"Episode: {i}")
-        print(f"Average Score {np.average(a)}")
+        print(f"Average Score {np.average(average)}")
         print(f"Epsilon: {agent.epsilon}")
         print()
         render = True
-        a = []
+        average = []
 
         if agent.epsilon < 0.03:
             agent.epsilon = 0
@@ -188,8 +188,6 @@ for i in range(1, 10000 + 1):
             game.render()
         steps += 1
 
-    a.append(len(game.snake.body))
+    average.append(len(game.snake.body))
     batch = agent.batching(64)
     agent.train(batch)
-    if steps >= 1000:
-        agent.set_weights()
